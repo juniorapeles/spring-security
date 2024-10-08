@@ -2,7 +2,8 @@ package tech.junior.springsecurity.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 import org.springframework.transaction.annotation.Transactional;
 import tech.junior.springsecurity.entities.Role;
 import tech.junior.springsecurity.entities.User;
@@ -14,13 +15,13 @@ import java.util.Set;
 @Configuration
 public class AdminUserConfig implements CommandLineRunner {
 
-    private final RoleRepository roleRepository;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private RoleRepository roleRepository;
+    private UserRepository userRepository;
+    private BCryptPasswordEncoder passwordEncoder;
 
     public AdminUserConfig(RoleRepository roleRepository,
                            UserRepository userRepository,
-                           PasswordEncoder passwordEncoder) {
+                           BCryptPasswordEncoder passwordEncoder) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -31,10 +32,11 @@ public class AdminUserConfig implements CommandLineRunner {
     public void run(String... args) throws Exception {
 
         var roleAdmin = roleRepository.findByName(Role.Values.ADMIN.name());
+
         var userAdmin = userRepository.findByUsername("admin");
 
         userAdmin.ifPresentOrElse(
-                (user) -> {
+                user -> {
                     System.out.println("admin ja existe");
                 },
                 () -> {
@@ -44,7 +46,6 @@ public class AdminUserConfig implements CommandLineRunner {
                     user.setRoles(Set.of(roleAdmin));
                     userRepository.save(user);
                 }
-
         );
     }
 }

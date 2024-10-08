@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import tech.junior.springsecurity.controller.dto.LoginRequest;
 import tech.junior.springsecurity.controller.dto.LoginResponse;
+import tech.junior.springsecurity.entities.Role;
 import tech.junior.springsecurity.repositories.UserRepository;
 
 import java.time.Instant;
+import java.util.stream.Collectors;
 
 @RestController
 public class TokenController {
@@ -24,31 +26,39 @@ public class TokenController {
 
     public TokenController(JwtEncoder jwtEncoder,
                            UserRepository userRepository,
-                           BCryptPasswordEncoder bCryptPasswordEncoder) {
+                           BCryptPasswordEncoder passwordEncoder) {
         this.jwtEncoder = jwtEncoder;
         this.userRepository = userRepository;
-        this.passwordEncoder = bCryptPasswordEncoder;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest){
-       var user = userRepository.findByUsername(loginRequest.username());
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+
+        var user = userRepository.findByUsername(loginRequest.username());
 
         if (user.isEmpty() || !user.get().isLoginCorrect(loginRequest, passwordEncoder)) {
-            throw new BadCredentialsException("User or password invalid!");
+            throw new BadCredentialsException("user or password is invalid!");
         }
+
         var now = Instant.now();
-       var expiresIn = 300L;
+        var expiresIn = 300L;
+
+        var scopes = user.get().getRoles()
+                .stream()
+                .map(Role::getName)
+                .collect(Collectors.joining(" "));
 
         var claims = JwtClaimsSet.builder()
                 .issuer("mybackend")
                 .subject(user.get().getUserId().toString())
-                .expiresAt(now.plusSeconds(expiresIn))
                 .issuedAt(now)
+                .expiresAt(now.plusSeconds(expiresIn))
+                .claim("scope", scopes)
                 .build();
 
-
         var jwtValue = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-       return ResponseEntity.ok(new LoginResponse(jwtValue, expiresIn));
+
+        return ResponseEntity.ok(new LoginResponse(jwtValue, expiresIn));
     }
 }
